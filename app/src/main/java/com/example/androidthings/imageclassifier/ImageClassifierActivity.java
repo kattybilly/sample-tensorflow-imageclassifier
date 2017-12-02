@@ -59,10 +59,11 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
 
     private ImageView mImage;
     private TextView[] mResultViews;
+    private TextView mStatusTextview;
 
     private AtomicBoolean mReady = new AtomicBoolean(false);
-    private ButtonInputDriver mButtonDriver;
-    private Gpio mReadyLED;
+    //private ButtonInputDriver mButtonDriver;
+    //private Gpio mReadyLED;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -70,19 +71,21 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_camera);
-        mImage = (ImageView) findViewById(R.id.imageView);
+        mImage = findViewById(R.id.imageView);
         mResultViews = new TextView[3];
-        mResultViews[0] = (TextView) findViewById(R.id.result1);
-        mResultViews[1] = (TextView) findViewById(R.id.result2);
-        mResultViews[2] = (TextView) findViewById(R.id.result3);
+        mResultViews[0] = findViewById(R.id.result1);
+        mResultViews[1] = findViewById(R.id.result2);
+        mResultViews[2] = findViewById(R.id.result3);
+        mStatusTextview = findViewById(R.id.status);
 
         init();
     }
 
     private void init() {
-        if (isAndroidThingsDevice(this)) {
-            initPIO();
-        }
+        mStatusTextview.setText("Status: Initializing app");
+//        if (isAndroidThingsDevice(this)) {
+//            initPIO();
+//        }
 
         mBackgroundThread = new HandlerThread("BackgroundThread");
         mBackgroundThread.start();
@@ -94,8 +97,9 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
             @Override
             public void onClick(View v) {
                 if (mReady.get()) {
+                    mStatusTextview.setText("Status: Taking photo, please wait ...");
                     Log.i(TAG, "Taking photo");
-                    setReady(false);
+                    //setReady(false);
                     mBackgroundHandler.post(mBackgroundClickHandler);
                 } else {
                     Log.i(TAG, "Sorry, processing hasn't finished. Try again in a few seconds");
@@ -104,30 +108,36 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         });
     }
 
-    /**
-     * This method should only be called when running on an Android Things device.
-     */
-    private void initPIO() {
-        PeripheralManagerService pioService = new PeripheralManagerService();
-        try {
-            mReadyLED = pioService.openGpio(BoardDefaults.getGPIOForLED());
-            mReadyLED.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
-            mButtonDriver = new ButtonInputDriver(
-                    BoardDefaults.getGPIOForButton(),
-                    Button.LogicState.PRESSED_WHEN_LOW,
-                    KeyEvent.KEYCODE_ENTER);
-            mButtonDriver.register();
-        } catch (IOException e) {
-            mButtonDriver = null;
-            Log.w(TAG, "Could not open GPIO pins", e);
-        }
-    }
+//    /**
+//     * This method should only be called when running on an Android Things device.
+//     */
+//    private void initPIO() {
+//        PeripheralManagerService pioService = new PeripheralManagerService();
+//        try {
+//            mReadyLED = pioService.openGpio(BoardDefaults.getGPIOForLED());
+//            mReadyLED.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
+//            mButtonDriver = new ButtonInputDriver(
+//                    BoardDefaults.getGPIOForButton(),
+//                    Button.LogicState.PRESSED_WHEN_LOW,
+//                    KeyEvent.KEYCODE_ENTER);
+//            mButtonDriver.register();
+//        } catch (IOException e) {
+//            mButtonDriver = null;
+//            Log.w(TAG, "Could not open GPIO pins", e);
+//        }
+//    }
 
     private Runnable mInitializeOnBackground = new Runnable() {
         @Override
         public void run() {
-            mImagePreprocessor = new ImagePreprocessor();
 
+            mImagePreprocessor = new ImagePreprocessor();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStatusTextview.setText("Status: Setting up text to speech");
+                }
+            });
             mTtsSpeaker = new TtsSpeaker();
             mTtsSpeaker.setHasSenseOfHumor(true);
             mTtsEngine = new TextToSpeech(ImageClassifierActivity.this,
@@ -136,7 +146,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
                         public void onInit(int status) {
                             if (status == TextToSpeech.SUCCESS) {
                                 mTtsEngine.setLanguage(Locale.US);
-                                mTtsEngine.setOnUtteranceProgressListener(utteranceListener);
+                                //mTtsEngine.setOnUtteranceProgressListener(utteranceListener);
                                 mTtsSpeaker.speakReady(mTtsEngine);
                             } else {
                                 Log.w(TAG, "Could not open TTS Engine (onInit status=" + status
@@ -145,14 +155,33 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
                             }
                         }
                     });
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStatusTextview.setText("Status: Initializing camera");
+                }
+            });
             mCameraHandler = CameraHandler.getInstance();
             mCameraHandler.initializeCamera(
                     ImageClassifierActivity.this, mBackgroundHandler,
                     ImageClassifierActivity.this);
 
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStatusTextview.setText("Status: Loading model files");
+                }
+            });
             mTensorFlowClassifier = new TensorFlowImageClassifier(ImageClassifierActivity.this);
 
-            setReady(true);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mStatusTextview.setText("Status: Touch anywhere on screen to take photo");
+                }
+            });
+
+            //setReady(true);
         }
     };
 
@@ -166,29 +195,29 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         }
     };
 
-    private UtteranceProgressListener utteranceListener = new UtteranceProgressListener() {
-        @Override
-        public void onStart(String utteranceId) {
-            setReady(false);
-        }
-
-        @Override
-        public void onDone(String utteranceId) {
-            setReady(true);
-        }
-
-        @Override
-        public void onError(String utteranceId) {
-            setReady(true);
-        }
-    };
+//    private UtteranceProgressListener utteranceListener = new UtteranceProgressListener() {
+//        @Override
+//        public void onStart(String utteranceId) {
+//            setReady(false);
+//        }
+//
+//        @Override
+//        public void onDone(String utteranceId) {
+//            setReady(true);
+//        }
+//
+//        @Override
+//        public void onError(String utteranceId) {
+//            setReady(true);
+//        }
+//    };
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         Log.d(TAG, "Received key up: " + keyCode + ". Ready = " + mReady.get());
         if (keyCode == KeyEvent.KEYCODE_ENTER) {
             if (mReady.get()) {
-                setReady(false);
+                //setReady(false);
                 mBackgroundHandler.post(mBackgroundClickHandler);
             } else {
                 Log.i(TAG, "Sorry, processing hasn't finished. Try again in a few seconds");
@@ -198,20 +227,26 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         return super.onKeyUp(keyCode, event);
     }
 
-    private void setReady(boolean ready) {
-        mReady.set(ready);
-        if (mReadyLED != null) {
-            try {
-                mReadyLED.setValue(ready);
-            } catch (IOException e) {
-                Log.w(TAG, "Could not set LED", e);
-            }
-        }
-    }
+//    private void setReady(boolean ready) {
+//        mReady.set(ready);
+//        if (mReadyLED != null) {
+//            try {
+//                mReadyLED.setValue(ready);
+//            } catch (IOException e) {
+//                Log.w(TAG, "Could not set LED", e);
+//            }
+//        }
+//    }
 
     @Override
     public void onImageAvailable(ImageReader reader) {
         final Bitmap bitmap;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStatusTextview.setText("Status: Image captured, processing...");
+            }
+        });
         try (Image image = reader.acquireNextImage()) {
             bitmap = mImagePreprocessor.preprocessImage(image);
         }
@@ -223,8 +258,20 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
             }
         });
 
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStatusTextview.setText("Status: Image classification started");
+            }
+        });
         final List<Classifier.Recognition> results = mTensorFlowClassifier.doRecognize(bitmap);
 
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mStatusTextview.setText("Status: Image classification done");
+            }
+        });
         Log.d(TAG, "Got the following results from Tensorflow: " + results);
         if (mTtsEngine != null) {
             // speak out loud the result of the image recognition
@@ -232,7 +279,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         } else {
             // if theres no TTS, we don't need to wait until the utterance is spoken, so we set
             // to ready right away.
-            setReady(true);
+            //setReady(true);
         }
 
         runOnUiThread(new Runnable() {
@@ -271,11 +318,11 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         } catch (Throwable t) {
             // close quietly
         }
-        try {
-            if (mButtonDriver != null) mButtonDriver.close();
-        } catch (Throwable t) {
-            // close quietly
-        }
+//        try {
+//            if (mButtonDriver != null) mButtonDriver.close();
+//        } catch (Throwable t) {
+//            // close quietly
+//        }
 
         if (mTtsEngine != null) {
             mTtsEngine.stop();
@@ -288,12 +335,12 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
      *
      * Source: https://stackoverflow.com/a/44171734/112705
      */
-    private boolean isAndroidThingsDevice(Context context) {
-        // We can't use PackageManager.FEATURE_EMBEDDED here as it was only added in API level 26,
-        // and we currently target a lower minSdkVersion
-        final PackageManager pm = context.getPackageManager();
-        boolean isRunningAndroidThings = pm.hasSystemFeature("android.hardware.type.embedded");
-        Log.d(TAG, "isRunningAndroidThings: " + isRunningAndroidThings);
-        return isRunningAndroidThings;
-    }
+//    private boolean isAndroidThingsDevice(Context context) {
+//        // We can't use PackageManager.FEATURE_EMBEDDED here as it was only added in API level 26,
+//        // and we currently target a lower minSdkVersion
+//        final PackageManager pm = context.getPackageManager();
+//        boolean isRunningAndroidThings = pm.hasSystemFeature("android.hardware.type.embedded");
+//        Log.d(TAG, "isRunningAndroidThings: " + isRunningAndroidThings);
+//        return isRunningAndroidThings;
+//    }
 }
