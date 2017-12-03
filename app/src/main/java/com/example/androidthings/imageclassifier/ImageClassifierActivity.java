@@ -99,7 +99,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
                 if (mReady.get()) {
                     mStatusTextview.setText("Status: Taking photo, please wait ...");
                     Log.i(TAG, "Taking photo");
-                    //setReady(false);
+                    setReady(false);
                     mBackgroundHandler.post(mBackgroundClickHandler);
                 } else {
                     Log.i(TAG, "Sorry, processing hasn't finished. Try again in a few seconds");
@@ -181,7 +181,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
                 }
             });
 
-            //setReady(true);
+            setReady(true);
         }
     };
 
@@ -195,40 +195,40 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         }
     };
 
-//    private UtteranceProgressListener utteranceListener = new UtteranceProgressListener() {
-//        @Override
-//        public void onStart(String utteranceId) {
-//            setReady(false);
-//        }
-//
-//        @Override
-//        public void onDone(String utteranceId) {
-//            setReady(true);
-//        }
-//
-//        @Override
-//        public void onError(String utteranceId) {
-//            setReady(true);
-//        }
-//    };
-
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        Log.d(TAG, "Received key up: " + keyCode + ". Ready = " + mReady.get());
-        if (keyCode == KeyEvent.KEYCODE_ENTER) {
-            if (mReady.get()) {
-                //setReady(false);
-                mBackgroundHandler.post(mBackgroundClickHandler);
-            } else {
-                Log.i(TAG, "Sorry, processing hasn't finished. Try again in a few seconds");
-            }
-            return true;
+    private UtteranceProgressListener utteranceListener = new UtteranceProgressListener() {
+        @Override
+        public void onStart(String utteranceId) {
+            setReady(false);
         }
-        return super.onKeyUp(keyCode, event);
-    }
 
-//    private void setReady(boolean ready) {
-//        mReady.set(ready);
+        @Override
+        public void onDone(String utteranceId) {
+            setReady(true);
+        }
+
+        @Override
+        public void onError(String utteranceId) {
+            setReady(true);
+        }
+    };
+
+//    @Override
+//    public boolean onKeyUp(int keyCode, KeyEvent event) {
+//        Log.d(TAG, "Received key up: " + keyCode + ". Ready = " + mReady.get());
+//        if (keyCode == KeyEvent.KEYCODE_ENTER) {
+//            if (mReady.get()) {
+//                setReady(false);
+//                mBackgroundHandler.post(mBackgroundClickHandler);
+//            } else {
+//                Log.i(TAG, "Sorry, processing hasn't finished. Try again in a few seconds");
+//            }
+//            return true;
+//        }
+//        return super.onKeyUp(keyCode, event);
+//    }
+
+    private void setReady(boolean ready) {
+        mReady.set(ready);
 //        if (mReadyLED != null) {
 //            try {
 //                mReadyLED.setValue(ready);
@@ -236,7 +236,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
 //                Log.w(TAG, "Could not set LED", e);
 //            }
 //        }
-//    }
+    }
 
     @Override
     public void onImageAvailable(ImageReader reader) {
@@ -279,7 +279,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
         } else {
             // if theres no TTS, we don't need to wait until the utterance is spoken, so we set
             // to ready right away.
-            //setReady(true);
+            setReady(true);
         }
 
         runOnUiThread(new Runnable() {
