@@ -146,7 +146,7 @@ public class ImageClassifierActivity extends Activity implements ImageReader.OnI
                         public void onInit(int status) {
                             if (status == TextToSpeech.SUCCESS) {
                                 mTtsEngine.setLanguage(Locale.US);
-                                //mTtsEngine.setOnUtteranceProgressListener(utteranceListener);
+                                mTtsEngine.setOnUtteranceProgressListener(utteranceListener);
                                 mTtsSpeaker.speakReady(mTtsEngine);
                             } else {
                                 Log.w(TAG, "Could not open TTS Engine (onInit status=" + status
